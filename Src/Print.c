@@ -107,7 +107,7 @@ void prepareBillPaymentDocument(T_GL_HWIDGET xDocument, T_GL_HWIDGET xLayout, by
 	GL_Widget_SetText      (xPrint, PrintData);
 	GL_Widget_SetItem      (xPrint, 0, xline++);
 	GL_Widget_SetFontScale (xPrint, GL_SCALE_LARGE);
-	GL_Widget_SetMargins   (xPrint, 60, 15 , 0 , 100, GL_UNIT_PIXEL);
+	GL_Widget_SetMargins   (xPrint, 60, 15 , 0 , 15, GL_UNIT_PIXEL);
 	GL_Widget_SetBackAlign (xPrint, GL_ALIGN_LEFT);
 	GL_Widget_SetFontStyle (xPrint, GL_FONT_STYLE_BOLD);
 
@@ -336,7 +336,7 @@ void prepareSaleWithCashBackDocument(T_GL_HWIDGET xDocument, T_GL_HWIDGET xLayou
 	GL_Widget_SetText      (xPrint, PrintData);
 	GL_Widget_SetItem      (xPrint, 0, xline++);
 	GL_Widget_SetFontScale (xPrint, GL_SCALE_LARGE);
-	GL_Widget_SetMargins   (xPrint, 60, 15 , 0 , 100, GL_UNIT_PIXEL);
+	GL_Widget_SetMargins   (xPrint, 60, 15 , 0 , 15, GL_UNIT_PIXEL);
 	GL_Widget_SetBackAlign (xPrint, GL_ALIGN_LEFT);
 	GL_Widget_SetFontStyle (xPrint, GL_FONT_STYLE_BOLD);
 

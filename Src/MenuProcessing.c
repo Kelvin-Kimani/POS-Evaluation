@@ -7,6 +7,7 @@
 const char amountMask[] = "/d/d/d,/d/d/d,/d/d/D";
 const char currencyLabel[3 + 1] = "Ksh";
 const char pinMask[] = "/d/d/d/d";
+char successMessage[100];
 T_GL_HWIDGET xDocument;
 T_GL_HWIDGET myLayout;
 byte myLine;
@@ -53,64 +54,6 @@ void getDateAndTime(){
 
 }
 
-void transactionSuccessful(char * message){
-
-	GL_Dialog_Message(gGoalGraphicLibInstance,	"Transaction Successful", message,	GL_ICON_INFORMATION, GL_BUTTON_NONE,	2 * GL_TIME_SECOND);
-	menuGoalDisplay();
-}
-
-void transactionCancelled(){
-
-	GL_Dialog_Message(gGoalGraphicLibInstance,	NULL, "Transaction cancelled!",	GL_ICON_ERROR, GL_BUTTON_NONE,	2 * GL_TIME_SECOND);
-	menuGoalDisplay();
-}
-
-void enterAmount(char * title, char * text, char * mask, char * amount, ulong size){
-
-	ulong selectedMenu = 0;
-
-	lblAmountEntry:
-		memset(amount, 0, sizeof amount);
-		selectedMenu = GL_Dialog_Amount(gGoalGraphicLibInstance, title, text, mask, amount, size, currencyLabel, GL_ALIGN_BOTTOM_LEFT, 1 * GL_TIME_MINUTE);
-
-
-	//Handle cancel
-	if (selectedMenu == GL_KEY_CANCEL) {
-		transactionCancelled();
-	}
-
-	//	Validation
-	int convertedAmount = atoi(amount);
-
-	if (convertedAmount < 1) {
-		GL_Dialog_Message(gGoalGraphicLibInstance, "Error", "Minimum amount is Ksh 1", GL_ICON_ERROR, GL_BUTTON_NONE, 2 * GL_TIME_SECOND);
-		goto lblAmountEntry;
-	}
-
-}
-
-void enterPin(char * title, char * pinMask, char * text, char * value){
-
-	ulong selectedMenu = 0;
-
-	lblPinEntry:
-		memset(value, 0, sizeof value);
-		selectedMenu = GL_Dialog_Password(gGoalGraphicLibInstance, title, text, pinMask, value, sizeof(value),30 * GL_TIME_SECOND);
-
-
-	//Handle cancel
-	if (selectedMenu == GL_KEY_CANCEL) {
-		transactionCancelled();
-	}
-
-	//Validate
-	if (strlen(value) < 3) {
-		GL_Dialog_Message(gGoalGraphicLibInstance, NULL, "Pin is short.", GL_ICON_ERROR, GL_BUTTON_NONE,3 * GL_TIME_SECOND);
-		goto lblPinEntry;
-	}
-
-}
-
 
 
 /* Sale */
@@ -128,21 +71,24 @@ void processSale(void){
 
 	/*Enter Sale Amount */
 	lblEnterAmount:
-		enterAmount("Sale", "Enter Sale Amount", amountMask, saleAmount, sizeof(saleAmount));
+		memset(saleAmount, 0, sizeof saleAmount);
+		selectedMenu = GL_Dialog_Amount(gGoalGraphicLibInstance, "Sale", "Enter Sale Amount", amountMask, saleAmount, sizeof(saleAmount), currencyLabel, GL_ALIGN_BOTTOM_LEFT, GL_TIME_INFINITE);
 
-	/* Cancel option */
-	if(selectedMenu == GL_KEY_CANCEL){
-		transactionCancelled();
+	/* Handle Cancel */
+	if (selectedMenu == GL_KEY_CANCEL) {
+		goto lblCancelled;
 	}
+
+
 
 	/* Validate amount entered */
 	int convertedAmount = atoi(saleAmount);
 
-	if (convertedAmount >= 5000) {
-
+	if (convertedAmount >= 5000 || convertedAmount < 1) {
 		GL_Dialog_Message(gGoalGraphicLibInstance, "Error", "Amount should be between 1 and 5000 Ksh", GL_ICON_ERROR, GL_BUTTON_NONE, 2 * GL_TIME_SECOND);
 		goto lblEnterAmount;
 	}
+
 
 
 	/* Prompt for card */
@@ -150,7 +96,35 @@ void processSale(void){
 	waitCard(cardDetails);
 
 	/* Prompt for Pin */
-	enterPin("Sale", pinMask, "Enter Pin#: ", salePin);
+	lblPinEntry:
+		memset(salePin, 0, sizeof salePin);
+		selectedMenu = GL_Dialog_Password(gGoalGraphicLibInstance, "Sale", "Enter Pin#: ", pinMask, salePin, sizeof(salePin), GL_TIME_INFINITE);
+
+
+	/* Handle Cancel */
+	if (selectedMenu == GL_KEY_CANCEL) {
+		goto lblCancelled;
+	}
+
+	/* Validate pin length */
+	if (strlen(salePin) < 3) {
+		GL_Dialog_Message(gGoalGraphicLibInstance, NULL, "Pin is short.", GL_ICON_ERROR, GL_BUTTON_NONE,3 * GL_TIME_SECOND);
+		goto lblPinEntry;
+	}
+
+
+	memset(successMessage, 0, sizeof successMessage);
+
+	strcat(successMessage, "Sale Amount\t");
+	strcat(successMessage, saleAmount);
+	strcat(successMessage, "\nCard Number\t");
+	strcat(successMessage, cardDetails);
+	strcat(successMessage, "\nDate");
+	strcat(successMessage, tcDate);
+	strcat(successMessage, tcTime);
+
+	/*Transaction Successful*/
+	GL_Dialog_Message(gGoalGraphicLibInstance,	"Transaction successful!", successMessage,	GL_ICON_INFORMATION, GL_BUTTON_NONE,	2 * GL_TIME_SECOND);
 
 
 	/* Print */
@@ -163,6 +137,13 @@ void processSale(void){
 	//Print Document
 	printDocument(xDocument);
 
+	goto lblEnd;
+
+	lblCancelled:
+		GL_Dialog_Message(gGoalGraphicLibInstance,	NULL, "Transaction cancelled!",	GL_ICON_ERROR, GL_BUTTON_NONE,	2 * GL_TIME_SECOND);
+	lblEnd:
+		return 1;
+
 }
 
 
@@ -170,10 +151,10 @@ void processSale(void){
 /* Bill Payment */
 void processBillPayment(void){
 
-	const char mask[] = "/d/d/d/d/d/d/d/d";
-	char successMessage[100];
-	T_GL_HWIDGET xLayout = NULL;
 	ulong selectedMenu = 0;
+	const char mask[] = "/d/d/d/d/d/d/d/d";
+	T_GL_HWIDGET xLayout = NULL;
+
 
 
 	/* Get Start Time of Transaction */
@@ -181,11 +162,11 @@ void processBillPayment(void){
 
 	lblBillNumberEntry:
 		memset(billNumber, 0, sizeof billNumber);
-		selectedMenu = GL_Dialog_Text(gGoalGraphicLibInstance, "Bill Payment", "Enter Bill Number", mask, billNumber, sizeof(billNumber), 1 * GL_TIME_MINUTE);
+		selectedMenu = GL_Dialog_Text(gGoalGraphicLibInstance, "Bill Payment", "Enter Bill Number", mask, billNumber, sizeof(billNumber), GL_TIME_INFINITE);
 
 	//Handle cancel
 	if (selectedMenu == GL_KEY_CANCEL) {
-		transactionCancelled();
+		goto lblCancelled;
 	}
 	//validate length
 	if(strlen(billNumber) < 5){
@@ -195,7 +176,26 @@ void processBillPayment(void){
 	}
 
 	/* Prompt for bill payment */
-	enterAmount("Bill Payment", "Enter Bill Amount", amountMask, billAmount, sizeof(billAmount));
+	lblEnterBillAmount:
+		memset(billAmount, 0, sizeof billAmount);
+		selectedMenu = GL_Dialog_Amount(gGoalGraphicLibInstance, "Bill Payment", "Enter Bill Amount", amountMask, billAmount, sizeof(billAmount), currencyLabel, GL_ALIGN_BOTTOM_LEFT, GL_TIME_INFINITE);
+
+	/* Handle Cancel */
+	if (selectedMenu == GL_KEY_CANCEL) {
+		goto lblCancelled;
+	}
+
+
+
+	/* Validate amount entered */
+	int convertedAmount = atoi(billAmount);
+
+	if (convertedAmount < 1) {
+		GL_Dialog_Message(gGoalGraphicLibInstance, "Error", "Please enter amount", GL_ICON_ERROR, GL_BUTTON_NONE, 2 * GL_TIME_SECOND);
+		goto lblEnterBillAmount;
+	}
+
+
 
 	//Let's display what happened
 	memset(successMessage, 0, sizeof successMessage);
@@ -208,6 +208,11 @@ void processBillPayment(void){
 	strcat(successMessage, tcDate);
 	strcat(successMessage, tcTime);
 
+	/*Transaction Successful*/
+	GL_Dialog_Message(gGoalGraphicLibInstance,	"Transaction successful!", successMessage,	GL_ICON_INFORMATION, GL_BUTTON_NONE,	2 * GL_TIME_SECOND);
+
+
+
 
 	/* Print */
 	//Create document to print
@@ -219,8 +224,13 @@ void processBillPayment(void){
 	//Print Document
 	printDocument(xDocument);
 
-	//Display success message
-	transactionSuccessful(successMessage);
+	goto lblEnd;
+
+	lblCancelled:
+		GL_Dialog_Message(gGoalGraphicLibInstance,	NULL, "Transaction cancelled!",	GL_ICON_ERROR, GL_BUTTON_NONE,	2 * GL_TIME_SECOND);
+
+	lblEnd:
+		return 1;
 
 }
 
@@ -228,6 +238,7 @@ void processBillPayment(void){
 /* Sale with cashback */
 void processSaleWithCashback(void){
 
+	ulong selectedMenu = 0;
 	T_GL_HWIDGET xLayout = NULL;
 
 	memset(cardDetails, 0, sizeof(cardDetails));
@@ -237,17 +248,89 @@ void processSaleWithCashback(void){
 
 
 	/* Prompt for Sale Amount */
-	enterAmount("Sale With Cashback", "Enter Sale Amount", amountMask, saleWithCashBackAmount, sizeof(saleWithCashBackAmount));
+	lblEnterSWCBAmount:
+		memset(saleWithCashBackAmount, 0, sizeof saleWithCashBackAmount);
+		selectedMenu = GL_Dialog_Amount(gGoalGraphicLibInstance, "Sale With Cashback", "Enter Sale Amount", amountMask, saleWithCashBackAmount, sizeof(saleWithCashBackAmount), currencyLabel, GL_ALIGN_BOTTOM_LEFT, GL_TIME_INFINITE);
+
+	/* Handle Cancel */
+	if (selectedMenu == GL_KEY_CANCEL) {
+		goto lblCancelled;
+	}
+
+
+
+	/* Validate amount entered */
+	int convertedSaleAmount = atoi(saleWithCashBackAmount);
+
+	if (convertedSaleAmount < 1) {
+		GL_Dialog_Message(gGoalGraphicLibInstance, "Error", "Please enter amount", GL_ICON_ERROR, GL_BUTTON_NONE, 2 * GL_TIME_SECOND);
+		goto lblEnterSWCBAmount;
+	}
+
+
+
 
 	/* Prompt for Cashback Amount */
-	enterAmount("Sale With Cashback", "Enter Cashback Amount", amountMask, cashBackAmount, sizeof(cashBackAmount));
+	lblEnterCBAmount:
+		memset(cashBackAmount, 0, sizeof cashBackAmount);
+		selectedMenu = GL_Dialog_Amount(gGoalGraphicLibInstance, "Sale With Cashback", "Enter Cash Back Amount", amountMask, cashBackAmount, sizeof(cashBackAmount), currencyLabel, GL_ALIGN_BOTTOM_LEFT, GL_TIME_INFINITE);
+
+	/* Handle Cancel */
+	if (selectedMenu == GL_KEY_CANCEL) {
+		goto lblCancelled;
+	}
+
+
+	/* Validate amount entered */
+	int convertedCashBackAmount = atoi(cashBackAmount);
+
+	if (convertedCashBackAmount < 1) {
+		GL_Dialog_Message(gGoalGraphicLibInstance, "Error", "Please enter amount", GL_ICON_ERROR, GL_BUTTON_NONE, 2 * GL_TIME_SECOND);
+		goto lblEnterCBAmount;
+	}
+
+
 
 	/* Prompt for card */
 	/* Pass storage for card number */
 	waitCard(cardDetails);
 
-	//Get users pin
-	enterPin("Sale with Cashback",pinMask, "Enter Pin#:", saleWithCashBackPin);
+
+	/* Prompt for Pin */
+	lblPinEntry:
+		memset(saleWithCashBackPin, 0, sizeof saleWithCashBackPin);
+		selectedMenu = GL_Dialog_Password(gGoalGraphicLibInstance, "Sale with Cashback", "Enter Pin#: ", pinMask, saleWithCashBackPin, sizeof(saleWithCashBackPin), GL_TIME_INFINITE);
+
+
+	/* Handle Cancel */
+	if (selectedMenu == GL_KEY_CANCEL) {
+		goto lblCancelled;
+	}
+
+	/* Validate pin length */
+	if (strlen(saleWithCashBackPin) < 3) {
+		GL_Dialog_Message(gGoalGraphicLibInstance, NULL, "Pin is short.", GL_ICON_ERROR, GL_BUTTON_NONE,3 * GL_TIME_SECOND);
+		goto lblPinEntry;
+	}
+
+
+	memset(successMessage, 0, sizeof successMessage);
+
+	strcat(successMessage, "Sale Amount\t");
+	strcat(successMessage, saleAmount);
+	strcat(successMessage, "\nCash back amount\t");
+	strcat(successMessage, cashBackAmount);
+	strcat(successMessage, "\nCard Number\t");
+	strcat(successMessage, cardDetails);
+	strcat(successMessage, "\nDate");
+	strcat(successMessage, tcDate);
+	strcat(successMessage, tcTime);
+
+
+	/*Transaction Successful*/
+	GL_Dialog_Message(gGoalGraphicLibInstance,	"Transaction successful!", successMessage,	GL_ICON_INFORMATION, GL_BUTTON_NONE,	2 * GL_TIME_SECOND);
+
+
 
 	/* Print */
 	//Create document to print
@@ -258,5 +341,13 @@ void processSaleWithCashback(void){
 
 	//Print Document
 	printDocument(xDocument);
+
+	goto lblEnd;
+
+	lblCancelled:
+		GL_Dialog_Message(gGoalGraphicLibInstance,	NULL, "Transaction cancelled!",	GL_ICON_ERROR, GL_BUTTON_NONE,	2 * GL_TIME_SECOND);
+
+	lblEnd:
+		return 1;
 
 }

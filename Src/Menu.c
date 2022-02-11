@@ -42,13 +42,15 @@ void menuGoalDisplay(void)
     switch (choice)
     {
     case 0:
+    	//Sale Processing
     	processSale();
       break;
     case 1:
+    	//Bill Payment Processing
     	processBillPayment();
       break;
     case 2:
-
+    	//Sale with Cashback Processing
     	processSaleWithCashback();
     	break;
 
